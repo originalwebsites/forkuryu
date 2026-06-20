@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>数学カードゲーム試作版</title>
+
+<style>
+body{
+    font-family:sans-serif;
+    max-width:800px;
+    margin:auto;
+    padding:20px;
+}
+
+.panel{
+    border:1px solid black;
+    padding:10px;
+    margin:10px 0;
+}
+
+button{
+    margin:4px;
+    padding:8px 12px;
+}
+
+#log{
+    height:200px;
+    overflow-y:auto;
+    border:1px solid black;
+    padding:10px;
+    background:#f5f5f5;
+}
+</style>
+</head>
+
+<body>
+
+<h1>数学カードゲーム 試作版</h1>
+
+<div class="panel">
+<h2>敵</h2>
+HP: <span id="enemyHp">100</span><br>
+関数: <span id="enemyFunc">x</span>
+</div>
+
+<div class="panel">
+<h2>自分</h2>
+HP: <span id="playerHp">100</span><br>
+n: <span id="playerN">5</span><br>
+関数: <span id="playerFunc">0</span>
+</div>
+
+<div class="panel">
+<h3>カード</h3>
+
+<button onclick="addTerm('x')">x</button>
+<button onclick="addTerm('x²')">x²</button>
+<button onclick="addTerm('1')">+1</button>
+<button onclick="addTerm('2')">+2</button>
+
+<br><br>
+
+<button onclick="differentiate()">微分</button>
+<button onclick="attack()">攻撃</button>
+</div>
+
+<div class="panel">
+<h3>ログ</h3>
+<div id="log"></div>
+</div>
+
+<script>
+
+let playerHp = 100;
+let enemyHp = 100;
+
+let playerN = 5;
+let enemyN = 5;
+
+let playerPoly = {
+    x2:0,
+    x1:0,
+    c:0
+};
+
+let enemyPoly = {
+    x2:1,
+    x1:0,
+    c:0
+};
+
+function polyToString(poly){
+
+    let parts=[];
+
+    if(poly.x2!==0){
+        if(poly.x2===1) parts.push("x²");
+        else parts.push(poly.x2+"x²");
+    }
+
+    if(poly.x1!==0){
+        if(poly.x1===1) parts.push("x");
+        else parts.push(poly.x1+"x");
+    }
+
+    if(poly.c!==0 || parts.length===0){
+        parts.push(poly.c);
+    }
+
+    return parts.join(" + ");
+}
+
+function evaluate(poly,n){
+    return Math.floor(
+        poly.x2*n*n +
+        poly.x1*n +
+        poly.c
+    );
+}
+
+function update(){
+
+    document.getElementById("playerHp").textContent=playerHp;
+    document.getElementById("enemyHp").textContent=enemyHp;
+
+    document.getElementById("playerN").textContent=playerN;
+
+    document.getElementById("playerFunc").textContent=
+        polyToString(playerPoly);
+
+    document.getElementById("enemyFunc").textContent=
+        polyToString(enemyPoly);
+}
+
+function log(text){
+
+    let div=document.getElementById("log");
+
+    div.innerHTML += text+"<br>";
+
+    div.scrollTop=div.scrollHeight;
+}
+
+function addTerm(card){
+
+    if(playerN<=0){
+        log("nが足りません");
+        return;
+    }
+
+    playerN--;
+
+    if(card==="x"){
+        playerPoly.x1+=1;
+    }
+
+    if(card==="x²"){
+        playerPoly.x2+=1;
+    }
+
+    if(card==="1"){
+        playerPoly.c+=1;
+    }
+
+    if(card==="2"){
+        playerPoly.c+=2;
+    }
+
+    log(card+" を追加");
+    update();
+}
+
+function differentiate(){
+
+    if(playerN<2){
+        log("n不足");
+        return;
+    }
+
+    playerN-=2;
+
+    playerPoly = {
+        x2:0,
+        x1:playerPoly.x2*2,
+        c:playerPoly.x1
+    };
+
+    log("微分した");
+    update();
+}
+
+function attack(){
+
+    let dmg=evaluate(playerPoly,playerN);
+
+    enemyHp-=dmg;
+
+    log(
+        polyToString(playerPoly)
+        +" に n="
+        +playerN
+        +" を代入"
+        +" → "
+        +dmg
+        +" ダメージ"
+    );
+
+    if(enemyHp<=0){
+        update();
+        alert("勝利！");
+        return;
+    }
+
+    enemyTurn();
+}
+
+function enemyTurn(){
+
+    enemyN+=2;
+
+    let r=Math.random();
+
+    if(r<0.5){
+        enemyPoly.x1+=1;
+        log("敵は x を追加");
+    }
+    else{
+        enemyPoly.c+=1;
+        log("敵は +1 を追加");
+    }
+
+    let dmg=evaluate(enemyPoly,enemyN);
+
+    playerHp-=dmg;
+
+    log(
+        "敵攻撃 "
+        +dmg
+        +" ダメージ"
+    );
+
+    if(playerHp<=0){
+        update();
+        alert("敗北...");
+        return;
+    }
+
+    playerN+=2;
+
+    update();
+}
+
+update();
+
+</script>
+
+</body>
+</html>
