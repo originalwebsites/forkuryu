@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数学カードゲーム Ver3</title>
+<style>
+body{background:#101522;color:#fff;font-family:sans-serif;max-width:1100px;margin:auto;padding:12px}
+.box{background:#1b2338;border-radius:12px;padding:12px;margin:8px 0}
+.bar{height:18px;background:#333;border-radius:9px;overflow:hidden}
+.fill{height:100%;background:#4caf50}
+button{margin:3px;padding:8px;border:none;border-radius:8px}
+#log{height:220px;overflow:auto;background:#0a0f1a;padding:8px}
+</style></head>
+<body>
+<h1>数学カードゲーム Ver3</h1>
+
+<div class="box">
+<h2>敵 HP <span id="ehp">100</span></h2>
+<div class="bar"><div id="ebar" class="fill" style="width:100%"></div></div>
+<div>敵関数: <span id="ef"></span></div>
+</div>
+
+<div class="box">
+<h2>自分 HP <span id="php">100</span> / n=<span id="nv"></span></h2>
+<div class="bar"><div id="pbar" class="fill" style="width:100%"></div></div>
+<div>アクティブ: <span id="af"></span></div>
+<div>パッシブ: <span id="p1"></span> | <span id="p2"></span> | <span id="p3"></span></div>
+</div>
+
+<div class="box">
+<button onclick="add('x')">x</button>
+<button onclick="add('x2')">x²</button>
+<button onclick="add('1')">+1</button>
+<button onclick="add('2')">+2</button>
+<button onclick="add('sqrt')">√x</button>
+<button onclick="add('log')">log₂x</button>
+<button onclick="add('inv')">1/x</button>
+</div>
+
+<div class="box">
+<button onclick="movePassive()">→パッシブ</button>
+<button onclick="activate()">アクティブ選択</button>
+<button onclick="differentiate()">微分</button>
+<button onclick="integrate()">積分</button>
+<button onclick="attack()">攻撃</button>
+<button onclick="limit0()">極限</button>
+<button onclick="nTrade()">Nトレード</button>
+</div>
+
+<div class="box"><div id="log"></div></div>
+
+<script>
+let hp=100,ehp=100,n=5,en=5,shield=0;
+let active={x2:0,x1:0,c:0,sqrt:false,log:false,inv:false};
+let pass=[null,null,null];
+let enemy={x2:1,x1:0,c:0,sqrt:false,log:false,inv:false};
+
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function fs(f){
+ let s=[];
+ if(f.x2)s.push((f.x2==1?'':f.x2)+'x²');
+ if(f.x1)s.push((f.x1==1?'':f.x1)+'x');
+ if(f.c)s.push(f.c);
+ if(f.sqrt)s.push('√x');
+ if(f.log)s.push('log₂x');
+ if(f.inv)s.push('1/x');
+ return s.length?s.join('+'):'0';
+}
+function evalF(f,x){
+ if(f.inv && x===0) return NaN;
+ if(f.log && x<=0) return NaN;
+ if(f.sqrt && x<0) return NaN;
+ let v=f.x2*x*x+f.x1*x+f.c;
+ if(f.sqrt) v+=Math.sqrt(x);
+ if(f.log) v+=Math.log2(x);
+ if(f.inv) v+=1/x;
+ return Math.floor(v);
+}
+function lose(msg){alert(msg);location.reload();}
+function upd(){
+php.textContent=hp;ehp.textContent=ehpv=ehp;
+nv.textContent=n;
+document.getElementById('af').textContent=fs(active);
+document.getElementById('ef').textContent=fs(enemy);
+document.getElementById('p1').textContent=pass[0]?fs(pass[0]):'-';
+document.getElementById('p2').textContent=pass[1]?fs(pass[1]):'-';
+document.getElementById('p3').textContent=pass[2]?fs(pass[2]):'-';
+pbar.style.width=Math.max(0,hp)+'%';
+ebar.style.width=Math.max(0,ehp)+'%';
+}
+function lg(t){log.innerHTML+=t+"<br>";log.scrollTop=99999;}
+function add(c){
+ if(n<1)return;
+ n--;
+ if(c=='x')active.x1++;
+ if(c=='x2')active.x2++;
+ if(c=='1')active.c++;
+ if(c=='2')active.c+=2;
+ if(c=='sqrt')active.sqrt=true;
+ if(c=='log')active.log=true;
+ if(c=='inv')active.inv=true;
+ upd();
+}
+function movePassive(){
+ let i=pass.findIndex(x=>x==null);
+ if(i==-1)return;
+ pass[i]=clone(active);
+ active={x2:0,x1:0,c:0,sqrt:false,log:false,inv:false};
+ upd();
+}
+function activate(){
+ let i=parseInt(prompt('1-3'))-1;
+ if(i<0||i>2||!pass[i])return;
+ active=pass[i]; pass[i]=null; upd();
+}
+function differentiate(){
+ if(n<2)return;
+ n-=2;
+ active={x2:0,x1:active.x2*2,c:active.x1,sqrt:false,log:false,inv:false};
+ lg('微分');
+ upd();
+}
+function integrate(){
+ if(n<2)return;
+ n-=2;
+ active.x2 += Math.floor(active.x1/2);
+ active.x1 = active.c;
+ active.c = 0;
+ lg('積分');
+ upd();
+}
+function attack(){
+ let dmg=evalF(active,n);
+ if(!Number.isFinite(dmg)) lose('未定義計算で敗北');
+ ehp-=Math.max(0,dmg);
+ lg('攻撃 '+dmg);
+ if(ehp<=0){alert('勝利');return;}
+ enemyTurn();
+ upd();
+}
+function limit0(){
+ let v=evalF(enemy,0);
+ if(!Number.isFinite(v)){alert('極限により相手敗北');return;}
+ lg('極限結果 '+v);
+}
+function nTrade(){
+ let k=parseInt(prompt('消費n')||0);
+ if(k<0||k>n)return;
+ n-=k;
+ shield=k*k*3;
+ lg('シールド '+shield);
+ upd();
+}
+function enemyTurn(){
+ en+=2;
+ if(Math.random()<0.33) enemy.x1++;
+ else if(Math.random()<0.5) enemy.x2++;
+ else enemy.c++;
+ let dmg=evalF(enemy,en);
+ if(!Number.isFinite(dmg)){alert('敵が未定義計算で自滅');return;}
+ let cut=Math.min(shield,dmg);
+ dmg-=cut; shield-=cut;
+ hp-=dmg;
+ lg('敵攻撃 '+dmg);
+ n+=2;
+ if(hp<=0) alert('敗北');
+}
+upd();
+</script></body></html>
