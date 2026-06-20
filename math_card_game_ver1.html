@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数学カードゲーム Ver1</title>
+<style>
+body{font-family:sans-serif;background:#151827;color:#fff;max-width:900px;margin:auto;padding:10px}
+.panel{background:#22263a;border-radius:12px;padding:12px;margin:10px 0}
+.bar{height:18px;background:#444;border-radius:9px;overflow:hidden}
+.fill{height:100%;background:#4caf50}
+.cards{display:flex;flex-wrap:wrap;gap:8px}
+.card{background:#fff;color:#000;padding:10px;border-radius:10px;cursor:pointer;min-width:70px;text-align:center}
+button{padding:10px;border:none;border-radius:10px;margin:4px}
+#log{height:220px;overflow:auto;background:#111;padding:8px}
+</style>
+</head>
+<body>
+<h1>数学カードゲーム Ver1</h1>
+
+<div class="panel">
+<h2>敵</h2>
+HP <span id="ehp">100</span>
+<div class="bar"><div id="ehpb" class="fill" style="width:100%"></div></div>
+<div>関数: <span id="ef">x</span></div>
+</div>
+
+<div class="panel">
+<h2>自分</h2>
+HP <span id="php">100</span>
+<div class="bar"><div id="phpb" class="fill" style="width:100%"></div></div>
+<div>n = <span id="pn">5</span></div>
+<div>アクティブ関数: <span id="pf">0</span></div>
+</div>
+
+<div class="panel">
+<h3>手札</h3>
+<div id="hand" class="cards"></div>
+<button onclick="draw()">ドロー</button>
+<button onclick="differentiate()">微分</button>
+<button onclick="integrate()">積分</button>
+<button onclick="limit0()">極限(n=0)</button>
+<button onclick="attack()">攻撃</button>
+<button onclick="nTrade()">Nトレード</button>
+</div>
+
+<div class="panel">
+<h3>ログ</h3>
+<div id="log"></div>
+</div>
+
+<script>
+let php=100, ehp=100, pn=5, en=5;
+let poly={x2:0,x1:0,c:0};
+let enemy={x2:0,x1:1,c:0};
+const deck=["x","x²","+1","+2","+3","sinx","cosx","√x"];
+
+function log(t){let d=document.getElementById("log"); d.innerHTML+=t+"<br>"; d.scrollTop=d.scrollHeight;}
+function polyStr(p){
+ let s=[];
+ if(p.x2)s.push((p.x2==1?"":p.x2)+"x²");
+ if(p.x1)s.push((p.x1==1?"":p.x1)+"x");
+ if(p.c||!s.length)s.push(p.c);
+ return s.join(" + ");
+}
+function val(p,n){return Math.floor(p.x2*n*n+p.x1*n+p.c);}
+function upd(){
+ php=Math.max(0,php); ehp=Math.max(0,ehp);
+ phpb.style.width=php+"%"; ehpb.style.width=ehp+"%";
+ document.getElementById("php").textContent=php;
+ document.getElementById("ehp").textContent=ehp;
+ document.getElementById("pn").textContent=pn;
+ document.getElementById("pf").textContent=polyStr(poly);
+ document.getElementById("ef").textContent=polyStr(enemy);
+}
+function renderHand(){
+ let h=document.getElementById("hand");
+ h.innerHTML="";
+ for(let i=0;i<5;i++){
+   let c=deck[Math.floor(Math.random()*deck.length)];
+   let div=document.createElement("div");
+   div.className="card";
+   div.textContent=c;
+   div.onclick=()=>play(c);
+   h.appendChild(div);
+ }
+}
+function play(c){
+ if(pn<=0){log("n不足");return;}
+ pn--;
+ if(c=="x") poly.x1++;
+ else if(c=="x²") poly.x2++;
+ else if(c=="+1") poly.c+=1;
+ else if(c=="+2") poly.c+=2;
+ else if(c=="+3") poly.c+=3;
+ else if(c=="sinx") poly.x1+=1;
+ else if(c=="cosx") poly.c+=1;
+ else if(c=="√x") poly.x1+=1;
+ log(c+" を使用");
+ upd();
+}
+function draw(){pn++; renderHand(); log("ドロー"); upd();}
+function differentiate(){
+ if(pn<2)return;
+ pn-=2;
+ poly={x2:0,x1:poly.x2*2,c:poly.x1};
+ log("微分");
+ upd();
+}
+function integrate(){
+ if(pn<2)return;
+ pn-=2;
+ poly={x2:poly.x1/2,x1:poly.c,c:0};
+ log("積分(簡易版)");
+ upd();
+}
+function limit0(){
+ let v=val(enemy,0);
+ log("極限: 相手関数の n=0 は "+v);
+}
+function attack(){
+ let dmg=val(poly,pn);
+ if(!isFinite(dmg)){alert("未定義計算で敗北"); location.reload();}
+ ehp-=dmg;
+ log("攻撃 "+dmg+" ダメージ");
+ if(ehp<=0){upd(); alert("勝利！"); return;}
+ enemyTurn();
+ upd();
+}
+function nTrade(){
+ let k=prompt("消費するn");
+ k=parseInt(k||0);
+ if(k>pn||k<0)return;
+ pn-=k;
+ let shield=k*k*3;
+ log("シールド "+shield);
+}
+function enemyTurn(){
+ en+=2;
+ if(Math.random()<0.5) enemy.x1++;
+ else enemy.c++;
+ let dmg=val(enemy,en);
+ php-=dmg;
+ log("敵の攻撃 "+dmg);
+ if(php<=0){upd(); alert("敗北");}
+ pn+=2;
+}
+renderHand(); upd();
+</script>
+</body>
+</html>
