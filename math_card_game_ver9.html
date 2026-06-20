@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数学カードゲーム Ver9</title>
+<style>
+body{background:#0f172a;color:#fff;font-family:sans-serif;max-width:1200px;margin:auto;padding:10px}
+.panel{background:#1e293b;padding:12px;border-radius:10px;margin:8px 0}
+button{padding:8px;margin:3px}
+#log{height:220px;overflow:auto;background:#020617;padding:8px}
+</style>
+</head>
+<body>
+<h1>数学カードゲーム Ver9 (AST微分対応)</h1>
+
+<div class="panel">
+HP <span id="hp">100</span> / 敵HP <span id="ehp">100</span> / n=<span id="nv">5</span><br>
+f(x)=<span id="expr"></span>
+</div>
+
+<div class="panel">
+<button onclick="wrap('sin')">sin</button>
+<button onclick="wrap('cos')">cos</button>
+<button onclick="wrap('log')">log₂</button>
+<button onclick="wrap('sqrt')">√</button>
+<button onclick="wrap('inv')">1/( )</button>
+<button onclick="add1()">+1</button>
+<button onclick="square()">x²</button>
+</div>
+
+<div class="panel">
+<button onclick="differentiate()">AST微分</button>
+<button onclick="evalNow()">f(n)</button>
+<button onclick="attack()">攻撃</button>
+</div>
+
+<div class="panel"><div id="log"></div></div>
+
+<script>
+let hp=100,ehp=100,n=5;
+let expr={type:'x'};
+
+function clone(o){return JSON.parse(JSON.stringify(o));}
+
+function S(e){
+ switch(e.type){
+  case 'x': return 'x';
+  case 'const': return String(e.v);
+  case 'add': return '('+S(e.a)+'+'+S(e.b)+')';
+  case 'pow2': return '('+S(e.a)+')²';
+  case 'sin': return 'sin('+S(e.a)+')';
+  case 'cos': return 'cos('+S(e.a)+')';
+  case 'log': return 'log₂('+S(e.a)+')';
+  case 'sqrt': return '√('+S(e.a)+')';
+  case 'inv': return '1/('+S(e.a)+')';
+  case 'mul': return '('+S(e.a)+'×'+S(e.b)+')';
+  case 'neg': return '-('+S(e.a)+')';
+ }
+}
+
+function E(e,x){
+ switch(e.type){
+  case 'x': return x;
+  case 'const': return e.v;
+  case 'add': return E(e.a,x)+E(e.b,x);
+  case 'mul': return E(e.a,x)*E(e.b,x);
+  case 'neg': return -E(e.a,x);
+  case 'pow2': return E(e.a,x)**2;
+  case 'sin': return Math.sin(E(e.a,x));
+  case 'cos': return Math.cos(E(e.a,x));
+  case 'log': let l=E(e.a,x); return l<=0?NaN:Math.log2(l);
+  case 'sqrt': let s=E(e.a,x); return s<0?NaN:Math.sqrt(s);
+  case 'inv': let i=E(e.a,x); return i===0?NaN:1/i;
+ }
+}
+
+function D(e){
+ switch(e.type){
+  case 'x': return {type:'const',v:1};
+  case 'const': return {type:'const',v:0};
+  case 'add': return {type:'add',a:D(e.a),b:D(e.b)};
+  case 'pow2':
+    return {
+      type:'mul',
+      a:{type:'const',v:2},
+      b:{type:'mul',a:clone(e.a),b:D(e.a)}
+    };
+  case 'sin':
+    return {type:'mul',a:{type:'cos',a:clone(e.a)},b:D(e.a)};
+  case 'cos':
+    return {type:'mul',a:{type:'neg',a:{type:'sin',a:clone(e.a)}},b:D(e.a)};
+  case 'log':
+    return {type:'mul',a:{type:'inv',a:clone(e.a)},b:D(e.a)};
+  case 'sqrt':
+    return {type:'mul',
+      a:{type:'inv',a:{type:'mul',a:{type:'const',v:2},b:{type:'sqrt',a:clone(e.a)}}},
+      b:D(e.a)};
+  case 'inv':
+    return {type:'neg',a:{type:'mul',a:{type:'inv',a:{type:'pow2',a:clone(e.a)}},b:D(e.a)}};
+  default:
+    return {type:'const',v:0};
+ }
+}
+
+function update(){
+ document.getElementById("hp").textContent=hp;
+ document.getElementById("ehp").textContent=ehp;
+ document.getElementById("nv").textContent=n;
+ document.getElementById("expr").textContent=S(expr);
+}
+
+function log(t){
+ let d=document.getElementById("log");
+ d.innerHTML+=t+"<br>";
+ d.scrollTop=d.scrollHeight;
+}
+
+function wrap(t){expr={type:t,a:expr};update();}
+function add1(){expr={type:'add',a:expr,b:{type:'const',v:1}};update();}
+function square(){expr={type:'pow2',a:expr};update();}
+
+function differentiate(){
+ expr=D(expr);
+ log("微分実行");
+ update();
+}
+
+function evalNow(){
+ let v=E(expr,n);
+ log(Number.isFinite(v)?"f("+n+")="+Math.floor(v):"未定義");
+}
+
+function attack(){
+ let v=E(expr,n);
+ if(!Number.isFinite(v)){
+   alert("未定義計算で敗北");
+   return;
+ }
+ ehp-=Math.max(0,Math.floor(v));
+ if(ehp<=0){update();alert("勝利");return;}
+ n+=2;
+ hp-=Math.floor(Math.random()*15)+5;
+ update();
+}
+update();
+</script>
+</body>
+</html>
