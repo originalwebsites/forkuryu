@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数学カードゲーム Ver2</title>
+<style>
+body{background:#121826;color:#fff;font-family:sans-serif;max-width:1000px;margin:auto;padding:10px}
+.box{background:#1f2940;border-radius:12px;padding:12px;margin:8px 0}
+.slot{border:1px solid #555;padding:8px;border-radius:8px;margin:4px}
+.cards button,.actions button{margin:4px;padding:8px}
+#log{height:180px;overflow:auto;background:#0b1020;padding:8px}
+.bar{height:16px;background:#333;border-radius:8px}.fill{height:100%;background:#4caf50}
+</style></head><body>
+<h1>数学カードゲーム Ver2</h1>
+
+<div class="box"><h2>敵 HP <span id=eHp>100</span></h2><div class=bar><div id=eBar class=fill style="width:100%"></div></div>
+<div>敵アクティブ: <span id=eAct>x</span></div></div>
+
+<div class="box">
+<h2>自分 HP <span id=pHp>100</span> / n=<span id=nv>5</span></h2>
+<div class=bar><div id=pBar class=fill style="width:100%"></div></div>
+<div class=slot>アクティブ: <span id=active>0</span></div>
+<div class=slot>パッシブ1: <span id=p1>-</span></div>
+<div class=slot>パッシブ2: <span id=p2>-</span></div>
+<div class=slot>パッシブ3: <span id=p3>-</span></div>
+</div>
+
+<div class="box cards">
+<button onclick="addCard('x')">x</button>
+<button onclick="addCard('x²')">x²</button>
+<button onclick="addCard('+1')">+1</button>
+<button onclick="addCard('+2')">+2</button>
+</div>
+
+<div class="box actions">
+<button onclick="movePassive()">→パッシブへ</button>
+<button onclick="activatePassive()">パッシブ→アクティブ</button>
+<button onclick="differentiate()">微分</button>
+<button onclick="attack()">攻撃</button>
+<button onclick="limitEnemy()">極限</button>
+<button onclick="nTrade()">Nトレード</button>
+</div>
+
+<div class="box"><div id="log"></div></div>
+
+<script>
+let hp=100,ehp=100,n=5,en=5,shield=0;
+let active={x2:0,x1:0,c:0};
+let passives=[null,null,null];
+let enemy={x2:1,x1:0,c:0};
+
+function s(p){let a=[];if(p.x2)a.push((p.x2==1?'':p.x2)+'x²');if(p.x1)a.push((p.x1==1?'':p.x1)+'x');if(p.c||!a.length)a.push(p.c);return a.join('+');}
+function v(p,k){return Math.floor(p.x2*k*k+p.x1*k+p.c);}
+function log(t){logg.innerHTML+=t+"<br>";logg.scrollTop=99999;}
+function upd(){
+eHp.textContent=ehp;pHp.textContent=hp;nv.textContent=n;
+eBar.style.width=Math.max(0,ehp)+'%';pBar.style.width=Math.max(0,hp)+'%';
+activeEl=active;
+activeSpan=document.getElementById('active');activeSpan.textContent=s(active);
+document.getElementById('eAct').textContent=s(enemy);
+['p1','p2','p3'].forEach((id,i)=>document.getElementById(id).textContent=passives[i]?s(passives[i]):'-');
+}
+function addCard(c){
+if(n<1)return;
+n--;
+if(c==='x')active.x1++;
+if(c==='x²')active.x2++;
+if(c==='+1')active.c++;
+if(c==='+2')active.c+=2;
+upd();
+}
+function movePassive(){
+let i=passives.findIndex(x=>x===null);
+if(i<0){log('パッシブ満杯');return;}
+passives[i]=JSON.parse(JSON.stringify(active));
+active={x2:0,x1:0,c:0};
+log('パッシブへ移動');
+upd();
+}
+function activatePassive(){
+let idx=prompt('1-3');
+idx=parseInt(idx)-1;
+if(idx<0||idx>2||!passives[idx])return;
+active=passives[idx];
+passives[idx]=null;
+log('アクティブ選択');
+upd();
+}
+function differentiate(){
+if(n<2)return;
+n-=2;
+active={x2:0,x1:active.x2*2,c:active.x1};
+upd();log('微分');
+}
+function attack(){
+let dmg=v(active,n);
+if(!Number.isFinite(dmg)){alert('未定義計算で敗北');location.reload();}
+ehp-=dmg;
+log('攻撃 '+dmg);
+if(ehp<=0){alert('勝利');return;}
+enemyTurn();
+upd();
+}
+function limitEnemy(){
+let z=v(enemy,0);
+log('極限 n=0 → '+z);
+if(!Number.isFinite(z)){alert('相手敗北');}
+}
+function nTrade(){
+let k=parseInt(prompt('消費n')||0);
+if(k<0||k>n)return;
+n-=k;
+shield=k*k*3;
+log('シールド '+shield);
+upd();
+}
+function enemyTurn(){
+en+=2;
+Math.random()<0.5?enemy.x1++:enemy.c++;
+let dmg=v(enemy,en);
+if(shield>0){
+let cut=Math.min(shield,dmg);
+dmg-=cut;shield-=cut;
+log('Nトレードで'+cut+'軽減');
+}
+hp-=dmg;
+log('敵攻撃 '+dmg);
+n+=2;
+if(hp<=0)alert('敗北');
+}
+const logg=document.getElementById('log');
+upd();
+</script></body></html>
